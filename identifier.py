@@ -202,43 +202,180 @@ def can_make(letters, word, given_letters):
 
     return len(word) == 0
 
+def validate_horizontal_stacked_btt(board, x_pos, y_pos, word):
+    valid = True
+    if y_pos == 0:
+        return True
+
+    for i in range(x_pos, x_pos + len(word)):
+        if board[y_pos - 1][i] == '':
+            continue
+        else:
+            word_list = []
+            for ii  in reversed(range(0, y_pos+1)):
+                if board[ii][i] != '':
+                    word_list.append(board[ii][i])
+                else:
+                    break
+            if ''.join(reversed(list(word_list))) not in words:
+                valid = False
+                break
+
+    return valid
+
+
 def validate_horizontal_stacked_ttb(board, x_pos, y_pos, word):
     valid = True
 
     if y_pos == len(board)-1:
         return True
 
-    for i in range(x_pos, len(word)+1):
+    for i in range(x_pos, x_pos+len(word)):
         if board[y_pos+1][i] == '':
             continue
         else:
-            word = []
-            for ii in reversed(range(y_pos, len(board))):
-                if board[ii][x_pos] != '':
-                    word.append(board[ii][x_pos])
+            word_list = []
+            for ii in range(y_pos, len(board)):
+                if board[ii][i] != '':
+                    word_list.append(board[ii][i])
                 else:
                     break
                 #should i just assign valid here?
-            if ''.join(list(reversed(word))) not in words:
+            if ''.join(list(word_list)) not in words:
                 valid = False
                 break
 
     return valid
+def validate_vertical_stacked_ltr(board, x_pos, y_pos, word):
+    valid = True
+    if x_pos ==len(board)-1:
+        return True
+    for i in range(y_pos, y_pos+len(word)):
+        if board[i][x_pos+1] == '':
+            continue
+        else:
+            word_list = []
+            for ii in range(x_pos, len(board)):
+                if board[i][ii] != '':
+                    word_list.append(board[i][ii])
+                else:
+                    break
+            # if ''.join(list(word_list))
+            if ''.join(list(word_list)) not in words:
+                valid = False
+                break
+    return valid
+def validate_vertical_stacked_rtl(board, x_pos, y_pos, word):
+    valid = True
+    if x_pos ==len(board)-1:
+        return True
+    for i in range(y_pos, y_pos+len(word)):
+        if board[i][x_pos-1] == '':
+            continue
+        else:
+            word_list = []
+            for ii in reversed(range(0, x_pos+1)):
+                if board[i][ii] != '':
+                    word_list.append(board[i][ii])
+                else:
+                    break
+            # if ''.join(list(word_list))
+            if ''.join(reversed(word_list)) not in words:
+                valid = False
+                break
+    return valid
+def validate_horizontal_ltr(board, x_pos, y_pos):
 
-def validate_rules(board, x_pos, y_pos, word, vertical ):
+    word_list =[]
+    for i in range(x_pos, len(board)):
+        if board[y_pos][i] != '':
+            word_list.append(board[y_pos][i])
+        else:
+            break
+    return ''.join(word_list) in words
+def validate_vertical_ttb(board, x_pos, y_pos):
+        word_list=[]
+        for i in range(y_pos, len(board)):
+            if board[i][x_pos] != '':
+                word_list.append(board[i][x_pos])
+            else:
+                break
+        return ''.join(word_list) in words
+
+
+
+def update_board(board, word):
+    if word.vertical:
+        counter= 0
+        for i in range(word.y_pos, word.y_pos+len(word.word)):
+
+            board[i][word.x_pos] = word.word[counter]
+            counter += 1
+
+    else:
+        counter = 0
+        for i in range(word.x_pos, word.x_pos+len(word.word)):
+
+            board[word.y_pos][i] = word.word[counter]
+            counter += 1
+
+#todo write function to validate that the spaces for the new word are not overwriting any existing letters
+
+def find_moves(board):
+    #here we'll find the words
+    #process the potential moves
+    #and return them
+
+    pass
+def validate_rules(board, word ):
     valid= True
-    #todo rule for horizontal stacked words top to bottom
-    #todo rule for horizontal stacked words bottom to top
-    #todo rule for vertical stacked words left to right
-    #todo rule for vertical stacked words right to left
-    #todo rule for word starting at position left to right
+    temp_board = board[:]
+    update_board(temp_board, word)
+    if not word.vertical:
+        #todo rule for horizontal stacked words top to bottom
+        valid = validate_horizontal_stacked_ttb(temp_board, word.x_pos, word.y_pos, word.word)
+        if not valid:
+            return valid
+
+        #todo rule for horizontal stacked words bottom to top
+        valid = validate_horizontal_stacked_btt(temp_board, word.x_pos, word.y_pos, word.word)
+        if not valid:
+            return valid
+        # todo rule for word starting at position left to right
+        valid = validate_horizontal_ltr(temp_board, word.x_pos, word.y_pos)
+        if not valid:
+            return valid
+
+    # todo rule for word starting at position with intersecting letter horizontally
+    else:
+        #todo rule for vertical stacked words left to right
+        valid = validate_vertical_stacked_ltr(temp_board, word.x_pos, word.y_pos, word.word)
+        if not valid:
+            return valid
+
+        #todo rule for vertical stacked words right to left
+
+
+        valid = validate_vertical_stacked_rtl(temp_board, word.x_pos, word.y_pos, word.word)
+        if not valid:
+            return valid
+
     #todo rule for word starting at position top to bottom
-    #todo rule for word starting at position with intersecting letter
+        valid = validate_vertical_ttb(temp_board, word.x_pos, word.y_pos)
+        if not valid:
+            return valid
+
+    #todo rule for word starting at position with intersecting letter vertically
     pass
 
-#gonna write up real quick a little test case
 
-validate_horizontal_stacked_ttb(load_demo_board('demo_board_2.csv'),7,4, 'am')
+#gonna write up real quick a little test case
+board = load_demo_board('demo_board_2.csv')
+# board[3][5]= 'a'
+# board[4][5]='h'
+# validate_vertical_stacked_ltr(board,5,3, 'ah')
+word = Word('tame',14,2,True)
+validate_rules(board,word)
 # print distance_to_next_letter_horizontal_l_t_r(load_demo_board('demo_board.csv'),10, 3 )
 # load_demo_board('demo_board.csv')
 # [board.append(['' for x in range(0, 15)]) for x in range(0, 16)]
