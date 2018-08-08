@@ -1,17 +1,31 @@
 __author__ = 'andrewsmiley'
 #todo find leading and trailing string match to words
 #todo build filler method to identify words that match letters in stack and leading or trailing words
+
+def load_demo_board(filename):
+    lines = open(filename).read().split('\n')
+    temp_lines = [x.replace(' ','').split(',') for x in lines]
+    for line in temp_lines:
+        del line[-1]
+    return temp_lines
+def load_letter_scores(filename):
+    lines = open(filename).read().split('\n')
+    return {x.split(',')[0]: int(x.split(',')[1]) for x in lines}
+
 class Word:
-    def __init__(self, word, x_pos, y_pos, vertical):
+    def __init__(self, word, x_pos, y_pos, vertical, score=0):
         self.word = word
         self.x_pos = x_pos
         self.y_pos = y_pos
         self.vertical = vertical
+        self.score = score
 
     def __str__(self):
         return self.word
 
 board =[]
+board_values = load_demo_board('board_values.csv')
+letter_scores = load_letter_scores('letter_values.csv')
 words = open('enable1.txt').read().split('\r\n')
 
 
@@ -27,10 +41,15 @@ def distance_to_top(board, x_pos, y_pos):
     return distance
 
 
-
-def load_demo_board(filename):
-    lines = open(filename).read().split('\n')
-    return [x.replace(' ','').split(',') for x in lines]
+def print_board(board):
+    for line in board:
+        l = ''
+        for item in line:
+            if len(item) > 0:
+                l += '%s,'%(item)
+            else:
+                l += ' ,'
+        print l
 def is_word(word):
     return word in words
 def find_trailing(tstring):
@@ -59,7 +78,7 @@ def process_vertical_word(board, x_pos, y_pos):
     for i in range(y_pos, len(board)):
         letters.append(board[i][x_pos])
         if i != len(board):
-            if board[i+1][x_pos] == '':
+            if i+1 < len(board) and board[i+1][x_pos] == '':
                 break
     if ''.join(letters) in words:
         word.word = ''.join(letters)
@@ -166,8 +185,8 @@ def find_words(board):
                         found_words.append(found)
 
                     pass
-    for word in found_words:
-        print word.word
+    # for word in found_words:
+    #     print word.word
     return found_words
 
 def find_words_from_letters(letters):
@@ -276,7 +295,8 @@ def validate_vertical_stacked_ltr(board, x_pos, y_pos, word):
                     #now check to see if we're looking at an intersecting word..
                     if ''.join(intersecting_word) not in words:
                         return False
-
+                else:
+                    return False
     #
 
 
@@ -313,6 +333,8 @@ def validate_vertical_stacked_rtl(board, x_pos, y_pos, word):
                     #now check to see if we're looking at an intersecting word..
                     if ''.join(intersecting_word) not in words:
                         return False
+                else:
+                    return False
     return valid
 def validate_horizontal_ltr(board, x_pos, y_pos):
 
@@ -338,16 +360,22 @@ def update_board(board, word):
     if word.vertical:
         counter= 0
         for i in range(word.y_pos, word.y_pos+len(word.word)):
-
-            board[i][word.x_pos] = word.word[counter]
-            counter += 1
+            if board[i][word.x_pos] == '' or board[i][word.x_pos] == word.word[counter]:
+                board[i][word.x_pos] = word.word[counter]
+                counter += 1
+            else:
+                return False
 
     else:
         counter = 0
         for i in range(word.x_pos, word.x_pos+len(word.word)):
+            if board[word.y_pos][i] == '' or board[word.y_pos][i] == word.word[counter]:
+                board[word.y_pos][i] = word.word[counter]
+                counter += 1
+            else:
+                return False
 
-            board[word.y_pos][i] = word.word[counter]
-            counter += 1
+    return True
 
 #todo write function to validate that the spaces for the new word are not overwriting any existing letters
 
@@ -369,10 +397,11 @@ def find_moves(board, letters):
         trailing_words= [x for x in find_trailing(word.word) if can_make(letters, x, word.word)]
         leading_words = [x for x in find_leading(word.word) if can_make(letters, x, word.word)]
         if word.vertical:
+            # pass
             # do left of the letter first
             # make sure we can play to the left
             for i in range(word.y_pos, word.y_pos+len(word.word)):
-                print "words around %s in %s" %( board[i][word.x_pos], word)
+                # print "words around %s in %s" %( board[i][word.x_pos], word)
                 if word.x_pos != 0:
                     for potential_word in words_from_letters:
                         #make sure we can play above
@@ -380,109 +409,196 @@ def find_moves(board, letters):
                             _word =Word(potential_word, word.x_pos-1, i-len(potential_word)+1, True)
                             if validate_rules(board, _word ):
                                 # print "to the left"
-                                print "%s %s %s" %(_word, _word.x_pos, _word.y_pos)
+                                # print "%s %s %s" %(_word, _word.x_pos, _word.y_pos)
+                                # temp_board = [[y for y in x] for x in board]
+                                # update_board(temp_board, _word)
+                                # print_board(temp_board)
                                 moves.append(_word)
                     #now do the right of the letter
-                if word.x_pos < len(board):
-                    for potential_word in words_from_letters:
-                        #make sure that the length of the
-                        if i+1 - len(potential_word)  > -1:
-                            _word = Word(potential_word, word.x_pos+1, i-len(potential_word)+1, True)
-                            if validate_rules(board, _word):
-                                # print "to the right"
-                                print "%s %s %s" % (_word, _word.x_pos, _word.y_pos)
-                                moves.append(_word)
+                if word.x_pos < len(board)-1:
+                        for potential_word in words_from_letters:
+                            #make sure that the length of the
+                            if i+1 - len(potential_word)  > -1:
+                                _word = Word(potential_word, word.x_pos+1, i-len(potential_word)+1, True)
+                                if validate_rules(board, _word):
+                                    # print "to the right"
+                                    # print "%s %s %s" % (_word, _word.x_pos, _word.y_pos)
+
+
+                                    # temp_board = [[y for y in x] for x in board]
+                                    # update_board(temp_board, _word)
+                                    # print_board(temp_board)
+                                    moves.append(_word)
 
             for leading_word in leading_words:
                 if len(leading_word.replace(word.word, '')) + ((word.y_pos+len(word.word))-1) < len (board):
                     _word = Word(leading_word, word.x_pos, word.y_pos, True)
                     if validate_rules(board, _word):
-                        print "%s %s %s" % (_word, _word.x_pos, _word.y_pos)
+                        # print "%s %s %s" % (_word, _word.x_pos, _word.y_pos)
+#                        temp_board = [[y for y in x] for x in board]
+#                         update_board(temp_board, _word)
+#                         print_board(temp_board)
                         moves.append(_word)
             for trailing_word in trailing_words:
 
                 if word.y_pos - len(trailing_word.replace(word.word, '')) >= 0:
                     _word = Word(trailing_word, word.x_pos, word.y_pos-len(trailing_word.replace(word.word, '')), True)
                     if validate_rules(board, _word):
-                        print "%s %s %s" % (_word, _word.x_pos, _word.y_pos)
+                        # print "%s %s %s" % (_word, _word.x_pos, _word.y_pos)
+                        # temp_board = [[y for y in x] for x in board]
+                        # update_board(temp_board, _word)
+                        # print_board(temp_board)
                         moves.append(_word)
-                # if
+            #     # if
 
         else:
-            pass
-        pass
+            #todo fill in the stuff for horizontal words now
+            for i in range(word.x_pos, word.x_pos+len(word.word)):
+                # print "words around %s in %s" % ( board[word.y_pos][i], word)
+                # make sure we can play above the  letter
+                if word.y_pos != 0:
+                    for potential_word in words_from_letters:
+                        #make sure the length of the potential word does not exceed the board
+                        if i+1 - len(potential_word) > -1:
+                            _word = Word(potential_word, i-len(potential_word)+1, word.y_pos-1, vertical=False)
+                            if validate_rules(board, _word):
+                                # print "%s %s %s" % (_word, _word.x_pos, _word.y_pos)
+                                # temp_board = [[y for y in x] for x in board]
+                                # update_board(temp_board, _word)
+                                # print_board(temp_board)
+                                moves.append(_word)
+                        # now play below the letter
+                if word.y_pos < len(board)-1:
+                    for potential_word in words_from_letters:
+                        #make sure we can play the word
+                        if i + 1 - len(potential_word) > -1:
+                            _word = Word(potential_word, i - len(potential_word) + 1, word.y_pos + 1, vertical=False)
+                            if validate_rules(board, _word):
+                                # print "%s %s %s" % (_word, _word.x_pos, _word.y_pos)
+                                # temp_board = [[y for y in x] for x in board]
+                                # update_board(temp_board, _word)
+                                # print_board(temp_board)
+                                moves.append(_word)
+            for leading_word in leading_words:
+                if len(leading_word[:len(word.word)]) + ((word.x_pos+len(word.word))-1) < len (board):
+                        _word = Word(leading_word, word.x_pos, word.y_pos, False)
+                        if validate_rules(board, _word):
+                            # print "%s %s %s" % (_word, _word.x_pos, _word.y_pos)
+                            # temp_board = [[y for y in x] for x in board]
+                            # update_board(temp_board, _word)
+                            # print_board(temp_board)
+                            moves.append(_word)
+                pass
+            for trailing_word in trailing_words:
+                if word.x_pos - len(trailing_word.replace(word.word, '')) >= 0:
+                        _word = Word(trailing_word, word.x_pos-len(trailing_word[len(word.word):]), word.y_pos, False)
+                        if validate_rules(board, _word):
+                            # print "%s %s %s" % (_word, _word.x_pos, _word.y_pos)
+                            # temp_board = [[y for y in x] for x in board]
+                            # update_board(temp_board, _word)
+                            # print_board(temp_board)
+                            moves.append(_word)
+
+    for i in range(0, len(moves)):
+        temp_board = [[y for y in x] for x in board]
+        update_board(temp_board, moves[i])
+        moves[i].score = calculate_word_score(temp_board, moves[i])
+
+    moves.sort(key=lambda x: x.score, reverse=True)
+    # pass
+    temp_board = [[y for y in x] for x in board]
+    update_board(temp_board, moves[0])
+
+    print "The recomended play is %s at x: %s y: %s for %s points" %(moves[0].word, moves[0].x_pos, moves[0].y_pos, moves[0].score)
+    print_board(temp_board)
     #here we'll find the words
     #process the potential moves
     #and return them
 
-    pass
+
+def calculate_word_score(_board, word):
+    word_score = 0
+    multiplier = 1
+    if word.vertical:
+
+        for i in range(word.y_pos, word.y_pos+len(word.word)):
+            letter_score = letter_scores[_board[i][word.x_pos]]
+            if board_values[i][word.x_pos] =='tl' and _board[i][word.x_pos] =='':
+                letter_score = letter_score *3
+
+            if board_values[i][word.x_pos] =='dl' and _board[i][word.x_pos] =='':
+                letter_score = letter_score * 2
+            if board_values[i][word.x_pos] == 'tw' and _board[i][word.x_pos] =='':
+                multiplier =3
+            if board_values[i][word.x_pos] =='dw' and _board[i][word.x_pos] =='':
+                multiplier = 2
+            word_score += letter_score
+
+    else:
+        for i in range(word.x_pos, word.x_pos+len(word.word)):
+            letter_score = letter_scores[_board[word.y_pos][i]]
+            if board_values[word.y_pos][i] == 'tl' and board_values[word.y_pos][i] == '':
+                letter_score = letter_score * 3
+            if board_values[word.y_pos][i] == 'dl' and board_values[word.y_pos][i] == '':
+                letter_score = letter_score * 2
+            if board_values[word.y_pos][i] == 'tw' and board_values[word.y_pos][i] == '':
+                multiplier = 3
+            if board_values[word.y_pos][i] == 'dw' and board_values[word.y_pos][i] == '':
+                multiplier = 2
+
+    return word_score *multiplier
+
+
 def validate_rules(board, word, leading_word= False, trailing_word = False ):
     valid= True
     temp_board = [[y for y in x] for x in board]
-    update_board(temp_board, word)
-    if not word.vertical:
-        #todo rule for horizontal stacked words top to bottom
-        valid = validate_horizontal_stacked_ttb(temp_board, word.x_pos, word.y_pos, word.word)
-        if not valid:
-            return valid
+    # update_board(temp_board, word)
+    if update_board(temp_board, word):
+        if not word.vertical:
+            #todo rule for horizontal stacked words top to bottom
+            valid = validate_horizontal_stacked_ttb(temp_board, word.x_pos, word.y_pos, word.word)
+            if not valid:
+                return valid
 
-        #todo rule for horizontal stacked words bottom to top
-        valid = validate_horizontal_stacked_btt(temp_board, word.x_pos, word.y_pos, word.word)
-        if not valid:
-            return valid
-        # todo rule for word starting at position left to right
-        valid = validate_horizontal_ltr(temp_board, word.x_pos, word.y_pos)
-        if not valid:
-            return valid
+            #todo rule for horizontal stacked words bottom to top
+            valid = validate_horizontal_stacked_btt(temp_board, word.x_pos, word.y_pos, word.word)
+            if not valid:
+                return valid
+            # todo rule for word starting at position left to right
+            valid = validate_horizontal_ltr(temp_board, word.x_pos, word.y_pos)
+            if not valid:
+                return valid
 
-    # todo rule for word starting at position with intersecting letter horizontally
-    else:
-        #todo rule for vertical stacked words left to right
-        valid = validate_vertical_stacked_ltr(temp_board, word.x_pos, word.y_pos, word.word)
-        if not valid:
-            return valid
+        # todo rule for word starting at position with intersecting letter horizontally
+        else:
+            #todo rule for vertical stacked words left to right
+            valid = validate_vertical_stacked_ltr(temp_board, word.x_pos, word.y_pos, word.word)
+            if not valid:
+                return valid
 
-        #todo rule for vertical stacked words right to left
+            #todo rule for vertical stacked words right to left
 
 
-        valid = validate_vertical_stacked_rtl(temp_board, word.x_pos, word.y_pos, word.word)
-        if not valid:
-            return valid
+            valid = validate_vertical_stacked_rtl(temp_board, word.x_pos, word.y_pos, word.word)
+            if not valid:
+                return valid
 
-    #todo rule for word starting at position top to bottom
-        valid = validate_vertical_ttb(temp_board, word.x_pos, word.y_pos)
-        if not valid:
-            return valid
+        #todo rule for word starting at position top to bottom
+            valid = validate_vertical_ttb(temp_board, word.x_pos, word.y_pos)
+            if not valid:
+                return valid
 
-    #todo rule for word starting at position with intersecting letter vertically
-    return valid
+            #todo rule for word starting at position with intersecting letter vertically
+        return valid
 
 
 #gonna write up real quick a little test case
-board = load_demo_board('demo_board_2.csv')
-letters = 'esktrea'
+
+board = load_demo_board('chris_game1.csv')
+# temp_board = [[y for y in x] for x in board]
+# _word = Word('streak', 9, 5, True)
+# update_board(temp_board, _word)
+# validate_vertical_stacked_rtl(temp_board, _word.x_pos, _word.y_pos, _word.word)
+# print_board(board)
+letters = 'yevedei'
 find_moves(board, letters)
-# board[3][5]= 'a'
-# board[4][5]='h'
-# validate_vertical_stacked_ltr(board,5,3, 'ah')
-# word = Word('tame',14,2,True)
-# validate_rules(board,word)
-# print distance_to_next_letter_horizontal_l_t_r(load_demo_board('demo_board.csv'),10, 3 )
-# load_demo_board('demo_board.csv')
-# [board.append(['' for x in range(0, 15)]) for x in range(0, 16)]
-#
-# find_words(load_demo_board('demo_board.csv'))
-# _letters = list('elele')
-# # _letters = ['w','u','v','u','c','u', 'e']
-#
-# word = ''
-# # can_make(_letters,'reccer', word )
-# # can_make(_letters, 'tine', 'ti')
-# print "leading words"
-# found = [x for x in find_leading(word) if can_make(_letters,x, word)]
-#
-# print "trailing words"
-# found = [x for x in find_trailing(word) if can_make(_letters,x, word)]
-# for x in found:
-#     print x
-# pass
